@@ -1,0 +1,1924 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Newsx API",
+    "description": "API Documentation for Newsx application, a platform for creating and managing blog posts, comments, likes, and user interactions.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://blog-sphere-backend-ruby.vercel.app",
+      "description": "Production server"
+    }
+  ],
+  "basePath": "/",
+  "consumes": ["application/json", "multipart/form-data"],
+  "produces": ["application/json"],
+  "securityDefinitions": {
+    "BearerAuth": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "description": "Enter token in format: Bearer <token>"
+    }
+  },
+  "definitions": {
+    "ApiResponse": {
+      "type": "object",
+      "properties": {
+        "statusCode": { "type": "integer", "example": 200 },
+        "data": { "type": "object", "nullable": true },
+        "message": { "type": "string", "example": "Operation successful" },
+        "success": { "type": "boolean", "example": true }
+      }
+    },
+    "User": {
+      "type": "object",
+      "properties": {
+        "_id": { "type": "string", "example": "60d21b4667d0d8992e610c84" },
+        "name": { "type": "string", "example": "John Doe" },
+        "email": { "type": "string", "example": "john@example.com" },
+        "userName": { "type": "string", "example": "johndoe" },
+        "avatar": {
+          "type": "string",
+          "example": "https://example.com/avatar.png",
+          "nullable": true
+        },
+        "role": {
+          "type": "string",
+          "example": "user",
+          "enum": ["user", "admin"]
+        },
+        "followers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "example": ["60d21b4667d0d8992e610c85"],
+          "description": "List of user IDs who follow this user"
+        },
+        "following": {
+          "type": "array",
+          "items": { "type": "string" },
+          "example": ["60d21b4667d0d8992e610c86"],
+          "description": "List of user IDs this user follows"
+        }
+      }
+    },
+    "Post": {
+      "type": "object",
+      "properties": {
+        "_id": { "type": "string", "example": "60d21b4667d0d8992e610c85" },
+        "title": { "type": "string", "example": "My First Post" },
+        "content": {
+          "type": "string",
+          "example": "This is the content of my post."
+        },
+        "author": { "$ref": "#/definitions/User" },
+        "image": {
+          "type": "string",
+          "example": "https://example.com/image.png",
+          "nullable": true
+        },
+        "category": { "type": "string", "example": "Tech" },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "example": ["tech", "blog"]
+        },
+        "contentTable": {
+          "type": "string",
+          "example": "Table of contents",
+          "nullable": true
+        }
+      }
+    },
+    "Comment": {
+      "type": "object",
+      "properties": {
+        "_id": { "type": "string", "example": "60d21b4667d0d8992e610c86" },
+        "content": { "type": "string", "example": "Great post!" },
+        "author": { "$ref": "#/definitions/User" },
+        "postId": { "type": "string", "example": "60d21b4667d0d8992e610c85" },
+        "parentCommentId": {
+          "type": "string",
+          "example": null,
+          "nullable": true
+        },
+        "depth": { "type": "integer", "example": 0 }
+      }
+    },
+    "Like": {
+      "type": "object",
+      "properties": {
+        "_id": { "type": "string", "example": "60d21b4667d0d8992e610c87" },
+        "userId": { "type": "string", "example": "60d21b4667d0d8992e610c84" },
+        "postId": {
+          "type": "string",
+          "example": "60d21b4667d0d8992e610c85",
+          "nullable": true
+        },
+        "commentId": {
+          "type": "string",
+          "example": null,
+          "nullable": true
+        }
+      }
+    },
+    "Notification": {
+      "type": "object",
+      "properties": {
+        "_id": { "type": "string", "example": "60d21b4667d0d8992e610c88" },
+        "user": { "type": "string", "example": "60d21b4667d0d8992e610c84" },
+        "type": {
+          "type": "string",
+          "example": "like",
+          "enum": ["like", "comment", "follow", "post"]
+        },
+        "data": {
+          "type": "object",
+          "properties": {
+            "userId": {
+              "type": "string",
+              "example": "60d21b4667d0d8992e610c84",
+              "description": "ID of the user who triggered the notification"
+            },
+            "postId": {
+              "type": "string",
+              "example": "60d21b4667d0d8992e610c85",
+              "nullable": true
+            },
+            "commentId": {
+              "type": "string",
+              "example": "60d21b4667d0d8992e610c86",
+              "nullable": true
+            }
+          }
+        },
+        "read": { "type": "boolean", "example": false }
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/auth/signup": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Sign up a new user",
+        "description": "Registers a new user and sends an OTP for email verification.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "User's full name"
+                  },
+                  "email": {
+                    "type": "string",
+                    "description": "User's email address"
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "User's password"
+                  }
+                },
+                "required": ["name", "email", "password"],
+                "example": {
+                  "name": "John Doe",
+                  "email": "john@example.com",
+                  "password": "Password123!"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": null,
+                  "message": "OTP sent successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "409": { "description": "User already exists" },
+          "500": { "description": "Server error" }
+        }
+      }
+    },
+    "/api/v1/auth/verify": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Verify user account with OTP",
+        "description": "Verifies a user’s email using the provided OTP.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "description": "User's email address"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "description": "One-time password"
+                  }
+                },
+                "required": ["email", "otp"],
+                "example": {
+                  "email": "john@example.com",
+                  "otp": "123456"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email verified",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": null,
+                  "message": "Email verified successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid OTP or already verified" },
+          "404": { "description": "User not found" }
+        }
+      }
+    },
+    "/api/v1/auth/resend-otp": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Resend OTP for email verification",
+        "description": "Resends an OTP to the user’s email for verification.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "description": "User's email address"
+                  }
+                },
+                "required": ["email"],
+                "example": {
+                  "email": "john@example.com"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New OTP sent",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": null,
+                  "message": "New OTP sent successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "400": { "description": "Already verified" },
+          "404": { "description": "User not found" }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Log in a user",
+        "description": "Authenticates a user and returns access/refresh tokens.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "description": "User's email address"
+                  },
+                  "userName": {
+                    "type": "string",
+                    "description": "User's username"
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "User's password"
+                  },
+                  "rememberMe": {
+                    "type": "boolean",
+                    "description": "Extend token expiration"
+                  }
+                },
+                "required": ["password"],
+                "example": {
+                  "email": "john@example.com",
+                  "password": "Password123!",
+                  "rememberMe": true
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User logged in",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": {
+                    "user": {
+                      "_id": "60d21b4667d0d8992e610c84",
+                      "name": "John Doe",
+                      "email": "john@example.com",
+                      "userName": "johndoe",
+                      "avatar": "https://example.com/avatar.png",
+                      "role": "user"
+                    },
+                    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  },
+                  "message": "User logged in successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "401": { "description": "Invalid credentials" },
+          "403": { "description": "Email not verified" }
+        }
+      }
+    },
+    "/api/v1/auth/forget-password": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Request password reset OTP",
+        "description": "Sends an OTP to reset the user’s password.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "description": "User's email address"
+                  }
+                },
+                "required": ["email"],
+                "example": {
+                  "email": "john@example.com"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset OTP sent",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": null,
+                  "message": "Password reset OTP sent successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "404": { "description": "User not found" },
+          "429": { "description": "Rate limit exceeded" }
+        }
+      }
+    },
+    "/api/v1/auth/reset-password": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Reset password with OTP",
+        "description": "Resets the user’s password using the provided OTP.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "description": "User's email address"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "description": "One-time password"
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "New password"
+                  }
+                },
+                "required": ["email", "otp", "password"],
+                "example": {
+                  "email": "john@example.com",
+                  "otp": "123456",
+                  "password": "NewPassword123!"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": null,
+                  "message": "Password reset successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid password" },
+          "404": { "description": "Invalid or expired OTP" }
+        }
+      }
+    },
+    "/api/v1/auth/refresh-token": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Refresh access token",
+        "description": "Generates a new access token using a refresh token.",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "refreshToken": {
+                    "type": "string",
+                    "description": "Refresh token"
+                  }
+                },
+                "required": ["refreshToken"],
+                "example": {
+                  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token refreshed",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": {
+                    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  },
+                  "message": "Token refreshed successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "401": { "description": "Invalid or expired refresh token" }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Log out a user",
+        "description": "Invalidates the user’s refresh token and clears authentication cookies.",
+        "security": [{ "BearerAuth": [] }],
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "User logged out",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": null,
+                  "message": "User logged out successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/auth/update-user": {
+      "patch": {
+        "tags": ["Auth"],
+        "summary": "Update user information",
+        "description": "Updates the authenticated user’s profile details (name, email, or username). At least one field must be provided.",
+        "security": [{ "BearerAuth": [] }],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "User's full name"
+                  },
+                  "email": {
+                    "type": "string",
+                    "description": "User's email address"
+                  },
+                  "userName": {
+                    "type": "string",
+                    "description": "User's username"
+                  }
+                },
+                "example": {
+                  "name": "John Doe",
+                  "email": "john.doe@example.com",
+                  "userName": "johndoe"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": {
+                    "_id": "60d21b4667d0d8992e610c84",
+                    "name": "John Doe",
+                    "email": "john.doe@example.com",
+                    "userName": "johndoe",
+                    "avatar": "https://example.com/avatar.png",
+                    "role": "user"
+                  },
+                  "message": "Profile updated successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid input or no fields provided" },
+          "409": { "description": "Email or username already taken" },
+          "404": { "description": "User not found" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/auth/update-avatar": {
+      "patch": {
+        "tags": ["Auth"],
+        "summary": "Update user avatar",
+        "description": "Updates the authenticated user’s avatar image. The previous avatar is deleted if it exists.",
+        "security": [{ "BearerAuth": [] }],
+        "consumes": ["multipart/form-data"],
+        "produces": ["application/json"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "avatar": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Avatar image file (e.g., PNG, JPEG)"
+                  }
+                },
+                "required": ["avatar"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Avatar updated successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": {
+                    "_id": "60d21b4667d0d8992e610c84",
+                    "avatar": "https://example.com/new-avatar.png"
+                  },
+                  "message": "Avatar updated successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "400": { "description": "Avatar missing or invalid file type" },
+          "404": { "description": "User not found" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/auth/delete-user": {
+      "delete": {
+        "tags": ["Auth"],
+        "summary": "Delete user account and associated data",
+        "description": "Permanently deletes the authenticated user’s account, including their posts, comments, likes, followers, following relationships, notifications, and avatar image. Clears authentication cookies (accessToken and refreshToken).",
+        "security": [{ "BearerAuth": [] }],
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "User and all associated data deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": null,
+                  "message": "User and all associated data deleted successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Server error during deletion"
+          }
+        }
+      }
+    },
+    "/api/v1/users": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get all users and their posts",
+        "description": "Retrieves a list of users with their posts, supporting search by name, email, or username.",
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "query",
+            "description": "Search by name, email, or username",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Users and posts fetched",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": [
+                    {
+                      "_id": "60d21b4667d0d8992e610c84",
+                      "name": "John Doe",
+                      "email": "john@example.com",
+                      "userName": "johndoe",
+                      "posts": [
+                        {
+                          "_id": "60d21b4667d0d8992e610c85",
+                          "title": "My First Post"
+                        }
+                      ]
+                    }
+                  ],
+                  "message": "Users and posts fetched successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "404": { "description": "No users found" }
+        }
+      }
+    },
+    "/api/v1/users/{userName}": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get a single user and their posts",
+        "description": "Retrieves a user’s profile and posts by their username.",
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userName",
+            "description": "Username of the user",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User and posts fetched",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": {
+                    "_id": "60d21b4667d0d8992e610c84",
+                    "name": "John Doe",
+                    "email": "john@example.com",
+                    "userName": "johndoe",
+                    "posts": [
+                      {
+                        "_id": "60d21b4667d0d8992e610c85",
+                        "title": "My First Post"
+                      }
+                    ]
+                  },
+                  "message": "User and posts fetched successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "404": { "description": "User not found" }
+        }
+      }
+    },
+    "/api/v1/users/profile/me": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get authenticated user's profile",
+        "description": "Retrieves the profile and posts of the authenticated user.",
+        "security": [{ "BearerAuth": [] }],
+        "produces": ["application/json"],
+        "responses": {
+          "200": {
+            "description": "Profile and posts retrieved",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": {
+                    "_id": "60d21b4667d0d8992e610c84",
+                    "name": "John Doe",
+                    "email": "john@example.com",
+                    "userName": "johndoe",
+                    "posts": [
+                      {
+                        "_id": "60d21b4667d0d8992e610c85",
+                        "title": "My First Post"
+                      }
+                    ]
+                  },
+                  "message": "Profile and posts retrieved successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "404": { "description": "User not found" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/users/suspend/posts": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get authenticated user's suspended posts",
+        "description": "Retrieves paginated suspended posts of the authenticated user, with optional title search.",
+        "security": [{ "BearerAuth": [] }],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "description": "Search by post title",
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "description": "Page number",
+            "schema": { "type": "integer", "example": 1 }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "description": "Number of items per page",
+            "schema": { "type": "integer", "example": 10 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Suspended posts fetched",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": {
+                    "posts": [
+                      {
+                        "_id": "60d21b4667d0d8992e610c85",
+                        "title": "My First Post",
+                        "isSuspended": true
+                      }
+                    ],
+                    "total": 1,
+                    "page": 1,
+                    "limit": 10
+                  },
+                  "message": "Suspended posts fetched successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "500": { "description": "Failed to paginate" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/users/suspend/comments": {
+      "get": {
+        "tags": ["Users"],
+        "summary": "Get authenticated user's suspended comments",
+        "description": "Retrieves paginated suspended comments of the authenticated user, with optional content search.",
+        "security": [{ "BearerAuth": [] }],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "query",
+            "description": "Search by comment content",
+            "schema": { "type": "string" }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "description": "Page number",
+            "schema": { "type": "integer", "example": 1 }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "description": "Number of items per page",
+            "schema": { "type": "integer", "example": 10 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Suspended comments fetched",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": {
+                    "comments": [
+                      {
+                        "_id": "60d21b4667d0d8992e610c86",
+                        "content": "Great post!",
+                        "isSuspended": true
+                      }
+                    ],
+                    "total": 1,
+                    "page": 1,
+                    "limit": 10
+                  },
+                  "message": "Suspended comments fetched successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "500": { "description": "Failed to paginate" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/posts": {
+      "get": {
+        "tags": ["Posts"],
+        "summary": "Get all posts",
+        "description": "Retrieves paginated posts with optional title search.",
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "description": "Page number",
+            "schema": { "type": "integer", "example": 1 }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "description": "Number of items per page",
+            "schema": { "type": "integer", "example": 10 }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "description": "Search by post title",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Posts retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": {
+                    "posts": [
+                      {
+                        "_id": "60d21b4667d0d8992e610c85",
+                        "title": "My First Post",
+                        "content": "This is the content of my post."
+                      }
+                    ],
+                    "total": 1,
+                    "page": 1,
+                    "limit": 10
+                  },
+                  "message": "Posts retrieved successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid query parameters" }
+        }
+      },
+      "post": {
+        "tags": ["Posts"],
+        "summary": "Create a new post",
+        "description": "Creates a new post with optional image upload. Requires authentication.",
+        "security": [{ "BearerAuth": [] }],
+        "consumes": ["multipart/form-data"],
+        "produces": ["application/json"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "Title of the post"
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "Content of the post"
+                  },
+                  "category": {
+                    "type": "string",
+                    "description": "Category of the post"
+                  },
+                  "tags": {
+                    "type": "string",
+                    "description": "Comma-separated tags"
+                  },
+                  "contentTable": {
+                    "type": "string",
+                    "description": "Content table for the post"
+                  },
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Optional post image (e.g., PNG, JPEG)"
+                  }
+                },
+                "required": ["title", "content"],
+                "example": {
+                  "title": "My First Post",
+                  "content": "This is the content of my post.",
+                  "category": "Tech",
+                  "tags": "tech, blog",
+                  "contentTable": "Table of contents"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Post created successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 201,
+                  "data": {
+                    "_id": "60d21b4667d0d8992e610c85",
+                    "title": "My First Post",
+                    "content": "This is the content of my post."
+                  },
+                  "message": "Post created successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input (e.g., missing title or content)"
+          },
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "Image upload failed" }
+        }
+      }
+    },
+    "/api/v1/posts/my": {
+      "get": {
+        "tags": ["Posts"],
+        "summary": "Get authenticated user's posts",
+        "description": "Retrieves posts created by the authenticated user with optional title search.",
+        "security": [{ "BearerAuth": [] }],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "description": "Search by post title",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User's posts retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": [
+                    {
+                      "_id": "60d21b4667d0d8992e610c85",
+                      "title": "My First Post",
+                      "content": "This is the content of my post."
+                    }
+                  ],
+                  "message": "User's posts retrieved successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "No posts found" }
+        }
+      }
+    },
+    "/api/v1/posts/{id}": {
+      "get": {
+        "tags": ["Posts"],
+        "summary": "Get a single post",
+        "description": "Retrieves a post by its ID.",
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "ID of the post",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Post retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": {
+                    "_id": "60d21b4667d0d8992e610c85",
+                    "title": "My First Post",
+                    "content": "This is the content of my post."
+                  },
+                  "message": "Post retrieved successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "404": { "description": "Post not found" }
+        }
+      },
+      "patch": {
+        "tags": ["Posts"],
+        "summary": "Update a post",
+        "description": "Updates an existing post with optional image upload. Requires authentication and ownership.",
+        "security": [{ "BearerAuth": [] }],
+        "consumes": ["multipart/form-data"],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "ID of the post to update",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "Title of the post"
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "Content of the post"
+                  },
+                  "category": {
+                    "type": "string",
+                    "description": "Category of the post"
+                  },
+                  "tags": {
+                    "type": "string",
+                    "description": "Comma-separated tags"
+                  },
+                  "contentTable": {
+                    "type": "string",
+                    "description": "Content table for the post"
+                  },
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Optional post image (e.g., PNG, JPEG)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Post updated successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": {
+                    "_id": "60d21b4667d0d8992e610c85",
+                    "title": "Updated Post",
+                    "content": "This is the updated content."
+                  },
+                  "message": "Post updated successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid input" },
+          "403": { "description": "Unauthorized (not post owner)" },
+          "404": { "description": "Post not found" },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "delete": {
+        "tags": ["Posts"],
+        "summary": "Delete a post",
+        "description": "Deletes a post by its ID, including associated comments and likes. Requires authentication and ownership.",
+        "security": [{ "BearerAuth": [] }],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "description": "ID of the post to delete",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Post deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 200,
+                  "data": null,
+                  "message": "Post deleted successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "403": { "description": "Unauthorized (not post owner)" },
+          "404": { "description": "Post not found" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/comments": {
+      "post": {
+        "tags": ["Comments"],
+        "summary": "Create a top-level comment",
+        "description": "Creates a new top-level comment on a post.",
+        "security": [{ "BearerAuth": [] }],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "postId": {
+                    "type": "string",
+                    "description": "ID of the post to comment on"
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "Content of the comment"
+                  }
+                },
+                "required": ["postId", "content"],
+                "example": {
+                  "postId": "60d21b4667d0d8992e610c85",
+                  "content": "Great post!"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Comment created successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 201,
+                  "data": {
+                    "_id": "60d21b4667d0d8992e610c86",
+                    "content": "Great post!",
+                    "postId": "60d21b4667d0d8992e610c85"
+                  },
+                  "message": "Comment created successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input (e.g., missing postId or content)"
+          },
+          "404": { "description": "Post not found" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/comments/replies": {
+      "post": {
+        "tags": ["Comments"],
+        "summary": "Create a nested comment (reply)",
+        "description": "Creates a nested comment as a reply to an existing comment (max depth: 5).",
+        "security": [{ "BearerAuth": [] }],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "parentCommentId": {
+                    "type": "string",
+                    "description": "ID of the parent comment"
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "Content of the reply"
+                  }
+                },
+                "required": ["parentCommentId", "content"],
+                "example": {
+                  "parentCommentId": "60d21b4667d0d8992e610c86",
+                  "content": "Thanks for the insight!"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Reply created successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/definitions/ApiResponse" },
+                "example": {
+                  "statusCode": 201,
+                  "data": {
+                    "_id": "60d21b4667d0d8992e610c87",
+                    "content": "Thanks for the insight!",
+                    "parentCommentId": "60d21b4667d0d8992e610c86"
+                  },
+                  "message": "Reply created successfully",
+                  "success": true
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid input or max depth exceeded" },
+          "404": { "description": "Parent comment or post not found" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/comments/{commentId}": {
+      "patch": {
+        "tags": ["Comments"],
+        "summary": "Update a comment",
+        "description": "Updates the content of an existing comment.",
+        "security": [{ "BearerAuth": [] }],
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "commentId",
+            "description": "ID of the comment to update",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "Publica": "string",
+                  "description": "Updated content of the comment"
+                }
+              },
+              "required": ["content"],
+              "example": {
+                "content": "Updated comment content"
+              }
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "Comment updated successfully",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/definitions/ApiResponse" },
+              "example": {
+                "statusCode": 200,
+                "data": {
+                  "_id": "60d21b4667d0d8992e610c86",
+                  "content": "Updated comment content"
+                },
+                "message": "Comment updated successfully",
+                "success": true
+              }
+            }
+          }
+        },
+        "400": { "description": "Invalid input (e.g., missing content)" },
+        "403": { "description": "Unauthorized (not comment owner)" },
+        "404": { "description": "Comment not found" },
+        "401": { "description": "Unauthorized" }
+      }
+    },
+    "delete": {
+      "tags": ["Comments"],
+      "summary": "Delete a comment",
+      "description": "Deletes a comment and its replies, updating the parent post or comment.",
+      "security": [{ "BearerAuth": [] }],
+      "produces": ["application/json"],
+      "parameters": [
+        {
+          "in": "path",
+          "name": "commentId",
+          "description": "ID of the comment to delete",
+          "required": true,
+          "schema": { "type": "string" }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Comment deleted successfully",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/definitions/ApiResponse" },
+              "example": {
+                "statusCode": 200,
+                "data": null,
+                "message": "Comment deleted successfully",
+                "success": true
+              }
+            }
+          }
+        },
+        "400": { "description": "Invalid comment ID" },
+        "403": { "description": "Unauthorized (not comment owner)" },
+        "404": { "description": "Comment not found" },
+        "401": { "description": "Unauthorized" }
+      }
+    }
+  },
+  "/api/v1/comments/{postId}": {
+    "get": {
+      "tags": ["Comments"],
+      "summary": "Get comments for a post",
+      "description": "Retrieves all top-level comments and their replies for a post.",
+      "produces": ["application/json"],
+      "parameters": [
+        {
+          "in": "path",
+          "name": "postId",
+          "description": "ID of the post",
+          "required": true,
+          "schema": { "type": "string" }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Comments retrieved successfully",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/definitions/ApiResponse" },
+              "example": {
+                "statusCode": 200,
+                "data": [
+                  {
+                    "_id": "60d21b4667d0d8992e610c86",
+                    "content": "Great post!",
+                    "postId": "60d21b4667d0d8992e610c85",
+                    "replies": []
+                  }
+                ],
+                "message": "Comments retrieved successfully",
+                "success": true
+              }
+            }
+          }
+        },
+        "404": { "description": "Post not found" }
+      }
+    }
+  },
+  "/api/v1/admin/suspension/user/{userId}": {
+    "patch": {
+      "tags": ["Admin"],
+      "summary": "Toggle user suspension",
+      "description": "Toggles the suspension status of a user. Requires admin role.",
+      "security": [{ "BearerAuth": [] }],
+      "produces": ["application/json"],
+      "parameters": [
+        {
+          "in": "path",
+          "name": "userId",
+          "description": "ID of the user",
+          "required": true,
+          "schema": { "type": "string" }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "User suspension toggled",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/definitions/ApiResponse" },
+              "example": {
+                "statusCode": 200,
+                "data": {
+                  "_id": "60d21b4667d0d8992e610c84",
+                  "isSuspended": true
+                },
+                "message": "User suspension toggled successfully",
+                "success": true
+              }
+            }
+          }
+        },
+        "400": { "description": "Invalid user ID" },
+        "404": { "description": "User not found" },
+        "401": { "description": "Unauthorized" },
+        "403": { "description": "Forbidden (not admin)" }
+      }
+    }
+  },
+  "/api/v1/admin/suspend/users": {
+    "get": {
+      "tags": ["Admin"],
+      "summary": "Get suspended users",
+      "description": "Retrieves paginated suspended users with optional search. Requires admin role.",
+      "security": [{ "BearerAuth": [] }],
+      "produces": ["application/json"],
+      "parameters": [
+        {
+          "in": "query",
+          "name": "query",
+          "description": "Search by name, email, or username",
+          "schema": { "type": "string" }
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "description": "Page number",
+          "schema": { "type": "integer", "example": 1 }
+        },
+        {
+          "in": "query",
+          "name": "limit",
+          "description": "Number of items per page",
+          "schema": { "type": "integer", "example": 10 }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Suspended users fetched",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/definitions/ApiResponse" },
+              "example": {
+                "statusCode": 200,
+                "data": {
+                  "users": [
+                    {
+                      "_id": "60d21b4667d0d8992e610c84",
+                      "name": "John Doe",
+                      "isSuspended": true
+                    }
+                  ],
+                  "total": 1,
+                  "page": 1,
+                  "limit": 10
+                },
+                "message": "Suspended users fetched successfully",
+                "success": true
+              }
+            }
+          }
+        },
+        "500": { "description": "Failed to paginate" },
+        "401": { "description": "Unauthorized" },
+        "403": { "description": "Forbidden (not admin)" }
+      }
+    }
+  },
+  "/api/v1/admin/suspension/post/{postId}": {
+    "patch": {
+      "tags": ["Admin"],
+      "summary": "Toggle post suspension",
+      "description": "Toggles the suspension status of a post. Requires admin role.",
+      "security": [{ "BearerAuth": [] }],
+      "produces": ["application/json"],
+      "parameters": [
+        {
+          "in": "path",
+          "name": "postId",
+          "description": "ID of the post",
+          "required": true,
+          "schema": { "type": "string" }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Post suspension toggled",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/definitions/ApiResponse" },
+              "example": {
+                "statusCode": 200,
+                "data": {
+                  "_id": "60d21b4667d0d8992e610c85",
+                  "isSuspended": true
+                },
+                "message": "Post suspension toggled successfully",
+                "success": true
+              }
+            }
+          }
+        },
+        "400": { "description": "Invalid post ID" },
+        "404": { "description": "Post not found" },
+        "401": { "description": "Unauthorized" },
+        "403": { "description": "Forbidden (not admin)" }
+      }
+    }
+  },
+  "/api/v1/admin/suspend/posts": {
+    "get": {
+      "tags": ["Admin"],
+      "summary": "Get suspended posts",
+      "description": "Retrieves paginated suspended posts with optional title search. Requires admin role.",
+      "security": [{ "BearerAuth": [] }],
+      "produces": ["application/json"],
+      "parameters": [
+        {
+          "in": "query",
+          "name": "search",
+          "description": "Search by post title",
+          "schema": { "type": "string" }
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "description": "Page number",
+          "schema": { "type": "integer", "example": 1 }
+        },
+        {
+          "in": "query",
+          "name": "limit",
+          "description": "Number of items per page",
+          "schema": { "type": "integer", "example": 10 }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Suspended posts fetched",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/definitions/ApiResponse" },
+              "example": {
+                "statusCode": 200,
+                "data": {
+                  "posts": [
+                    {
+                      "_id": "60d21b4667d0d8992e610c85",
+                      "title": "My First Post",
+                      "isSuspended": true
+                    }
+                  ],
+                  "total": 1,
+                  "page": 1,
+                  "limit": 10
+                },
+                "message": "Suspended posts fetched successfully",
+                "success": true
+              }
+            }
+          }
+        },
+        "500": { "description": "Failed to paginate" },
+        "401": { "description": "Unauthorized" },
+        "403": { "description": "Forbidden (not admin)" }
+      }
+    }
+  },
+  "/api/v1/admin/suspension/comment/{commentId}": {
+    "patch": {
+      "tags": ["Admin"],
+      "summary": "Toggle comment suspension",
+      "description": "Toggles the suspension status of a comment. Requires admin role.",
+      "security": [{ "BearerAuth": [] }],
+      "produces": ["application/json"],
+      "parameters": [
+        {
+          "in": "path",
+          "name": "commentId",
+          "description": "ID of the comment",
+          "required": true,
+          "schema": { "type": "string" }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Comment suspension toggled",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/definitions/ApiResponse" },
+              "example": {
+                "statusCode": 200,
+                "data": {
+                  "_id": "60d21b4667d0d8992e610c86",
+                  "isSuspended": true
+                },
+                "message": "Comment suspension toggled successfully",
+                "success": true
+              }
+            }
+          }
+        },
+        "400": { "description": "Invalid comment ID" },
+        "404": { "description": "Comment not found" },
+        "401": { "description": "Unauthorized" },
+        "403": { "description": "Forbidden (not admin)" }
+      }
+    }
+  },
+  "/api/v1/admin/suspend/comments": {
+    "get": {
+      "tags": ["Admin"],
+      "summary": "Get suspended comments",
+      "description": "Retrieves paginated suspended comments with optional content search. Requires admin role.",
+      "security": [{ "BearerAuth": [] }],
+      "produces": ["application/json"],
+      "parameters": [
+        {
+          "in": "query",
+          "name": "query",
+          "description": "Search by comment content",
+          "schema": { "type": "string" }
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "description": "Page number",
+          "schema": { "type": "integer", "example": 1 }
+        },
+        {
+          "in": "query",
+          "name": "limit",
+          "description": "Number of items per page",
+          "schema": { "type": "integer", "example": 10 }
+        }
+      ],
+      "responses": {
+        "200": {
+          "description": "Suspended comments fetched",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/definitions/ApiResponse" },
+              "example": {
+                "statusCode": 200,
+                "data": {
+                  "comments": [
+                    {
+                      "_id": "60d21b4667d0d8992e610c86",
+                      "content": "Great post!",
+                      "isSuspended": true
+                    }
+                  ],
+                  "total": 1,
+                  "page": 1,
+                  "limit": 10
+                },
+                "message": "Suspended comments fetched successfully",
+                "success": true
+              }
+            }
+          }
+        },
+        "500": { "description": "Failed to paginate" },
+        "401": { "description": "Unauthorized" },
+        "403": { "description": "Forbidden (not admin)" }
+      }
+    }
+  },
+  "/api/v1/likes/toggle": {
+    "patch": {
+      "tags": ["Likes"],
+      "summary": "Toggle like on a post or comment",
+      "description": "Adds or removes a like on a post or comment (mutually exclusive).",
+      "security": [{ "BearerAuth": [] }],
+      "consumes": ["application/json"],
+      "produces": ["application/json"],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "postId": {
+                      "type": "string",
+                      "description": "ID of the post to like"
+                    }
+                  },
+                  "required": ["postId"]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "commentId": {
+                      "type": "string",
+                      "description": "ID of the comment to like"
+                    }
+                  },
+                  "required": ["commentId"]
+                }
+              ],
+              "example": {
+                "postId": "60d21b4667d0d8992e610c85"
+              }
+            }
+          }
+        }
+      },
+      "responses": {
+        "201": {
+          "description": "Like added",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/definitions/ApiResponse" },
+              "example": {
+                "statusCode": 201,
+                "data": {
+                  "_id": "60d21b4667d0d8992e610c87",
+                  "postId": "60d21b4667d0d8992e610c85"
+                },
+                "message": "Like added successfully",
+                "success": true
+              }
+            }
+          }
+        },
+        "200": {
+          "description": "Like removed",
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/definitions/ApiResponse" },
+              "example": {
+                "statusCode": 200,
+                "data": null,
+                "message": "Like removed successfully",
+                "success": true
+              }
+            }
+          }
+        },
+        "400": { "description": "Invalid input" },
+        "404": { "description": "Resource not found" },
+        "401": { "description": "Unauthorized" }
+      }
+    }
+  }
+}
