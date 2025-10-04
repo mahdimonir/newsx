@@ -160,12 +160,15 @@ const Signup = () => {
   }, [timer, showOtp, canResend]);
 
   return (
-    <div className="w-full py-10 min-h-[100vh] bg-gray-50 dark:bg-gray-900">
+    <div className="w-full py-10 min-h-[100vh] bg-[url('/background.svg')] bg-cover bg-center bg-no-repeat bg-gray-50 dark:bg-gray-900 transition-colors">
       <div className="w-full flex justify-center">
         <div className="md:w-[480px] p-8 bg-white dark:bg-gray-800 shadow rounded-lg">
-          <h3 className="text-3xl text-gray-800 dark:text-gray-100 font-semibold text-center mb-2">
-            Sign up to Newsx
-          </h3>
+          <div className="flex flex-col items-center mb-2">
+            <img src="/logo.svg" alt="Newsx Logo" className="h-12 mb-2" />
+            <p className="text-2xl text-gray-800 dark:text-gray-100 font-semibold text-center">
+              Welcome Newsx, Please Sign Up
+            </p>
+          </div>
           <p className="text-center text-gray-500 mb-4">
             Already have an account?{" "}
             <Link href="/login" className="text-primary">

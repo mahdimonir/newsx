@@ -1,4 +1,6 @@
 // tailwind.config.js
+import "tailwind-scrollbar";
+
 module.exports = {
   darkMode: "class",
   content: [
@@ -80,5 +82,5 @@ module.exports = {
     "text-2xl",
     "text-3xl",
   ],
-  plugins: [],
+  plugins: ["tailwind-scrollbar"],
 };

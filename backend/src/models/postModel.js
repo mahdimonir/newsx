@@ -5,7 +5,8 @@ const postSchema = new Schema(
   {
     title: {
       type: String,
-      required: true,
+      required: [true, "Title is required"],
+      trim: true,
     },
     catagory: [
       {
@@ -16,6 +17,7 @@ const postSchema = new Schema(
     tags: [
       {
         type: String,
+        trim: true,
       },
     ],
     status: {
@@ -25,15 +27,27 @@ const postSchema = new Schema(
     },
     content: {
       type: String,
-      required: true,
+      required: [true, "Content is required"],
     },
     image: {
-      type: String, // cloudinary url
+      type: String, // URL of the main image
     },
+    images: [
+      {
+        url: {
+          type: String,
+          required: [true, "Image URL is required"],
+        },
+        alt: {
+          type: String,
+          default: "Image",
+        },
+      },
+    ],
     author: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: [true, "Author is required"],
     },
     likes: [
       {
@@ -55,11 +69,15 @@ const postSchema = new Schema(
   { timestamps: true }
 );
 
+// Populate author for find queries, but avoid populating in aggregations
 postSchema.pre(/^find/, function (next) {
-  this.populate({
-    path: "author",
-    select: "userName avatar",
-  });
+  // Only populate if not in an aggregation pipeline
+  if (!this.pipeline) {
+    this.populate({
+      path: "author",
+      select: "userName avatar",
+    });
+  }
   next();
 });
 

@@ -628,12 +628,8 @@ export default function Header() {
   return (
     <nav className="sticky top-0 z-50 bg-gray-50 dark:bg-gray-900 shadow-xl">
       <div className="max-w-[1200px] mx-auto px-4 py-3 flex items-center justify-between">
-        <Link
-          href="/"
-          className="text-lg font-bold text-primary"
-          aria-label="Newsx Home"
-        >
-          Newsx
+        <Link href="/" className="flex items-center" aria-label="Newsx Home">
+          <img src="/logo.svg" alt="Newsx Logo" className="h-8 w-auto" />
         </Link>
 
         <div className="flex-1 mx-4 hidden md:block relative" ref={searchRef}>

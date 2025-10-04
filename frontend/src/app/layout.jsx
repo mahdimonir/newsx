@@ -19,6 +19,14 @@ const geistMono = Geist_Mono({
 export const metadata = {
   title: "Newsx",
   description: "A blog platform for sharing ideas",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", type: "image/x-icon", sizes: "any" },
+    ],
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({ children }) {

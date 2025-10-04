@@ -17,6 +17,41 @@ import {
 import { createNotification } from "../utils/notificationHelper.js";
 import { throwIf } from "../utils/throwIf.js";
 
+// Upload image route
+const uploadImage = asyncHandler(async (req, res) => {
+  throwIf(!req.userId, new ValidationError("Unauthorized"));
+
+  const imageFile = req.files?.image?.[0];
+  throwIf(!imageFile, new ValidationError("No image file provided"));
+
+  const uploadedImage = await uploadOnCloudinary(imageFile.path);
+  throwIf(!uploadedImage?.url, new ValidationError("Image upload failed"));
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { url: uploadedImage.url },
+        "Image uploaded successfully"
+      )
+    );
+});
+
+// Delete image route
+const deleteImage = asyncHandler(async (req, res) => {
+  throwIf(!req.userId, new ValidationError("Unauthorized"));
+
+  const { url } = req.body || {};
+  throwIf(!url, new ValidationError("Image URL is required"));
+
+  await deleteFileFromCloudinary(url);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, null, "Image deleted successfully"));
+});
+
 // Create a new post
 const createPost = asyncHandler(async (req, res) => {
   throwIf(!req.userId, new ValidationError("Unauthorized"));
@@ -27,24 +62,24 @@ const createPost = asyncHandler(async (req, res) => {
     catagory = "all",
     tags = [],
     contentTable = "",
+    imageUrl = null,
+    contentImageUrls = [],
   } = req.body || {};
   throwIf(
     !title || !content,
     new ValidationError("Title and content required")
   );
 
-  let imageUrl = req.body.image;
-  const imageFile = req.files?.image?.[0];
-  if (imageFile) {
-    const image = await uploadOnCloudinary(imageFile.path);
-    throwIf(!image?.url, new ValidationError("Image upload failed"));
-    imageUrl = image.url;
-  }
+  const images = contentImageUrls.map((url) => ({
+    url: url,
+    alt: "Image",
+  }));
 
   const post = new Post({
     title,
     content,
-    image: imageUrl || null,
+    image: imageUrl,
+    images: images,
     catagory,
     tags: Array.isArray(tags)
       ? tags
@@ -79,32 +114,41 @@ const createPost = asyncHandler(async (req, res) => {
 // Update an existing post
 const updatePost = asyncHandler(async (req, res) => {
   const { id } = req.params;
+
+  // Validate ObjectId
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new NotFoundError("Invalid post ID");
+  }
+
   const post = await Post.findById(id);
   throwIf(!post || post.isSuspended, new NotFoundError("Post not found"));
-
   throwIf(
     post.author._id.toString() !==
       (req.userId.toString ? req.userId.toString() : req.userId),
     new ForbiddenError("Unauthorized")
   );
 
-  let imageUrl = req.body.image || post.image;
-  const imageFile = req.files?.image?.[0];
-  if (imageFile) {
-    if (post.image) {
-      await deleteFileFromCloudinary(post.image);
-    }
-    const image = await uploadOnCloudinary(imageFile.path);
-    throwIf(!image?.url, new ValidationError("Image upload failed"));
-    imageUrl = image.url;
-  }
+  const {
+    title,
+    content,
+    catagory,
+    tags,
+    contentTable,
+    status,
+    imageUrl,
+    contentImageUrls = [],
+  } = req.body || {};
 
-  const { title, content, catagory, tags, contentTable, status } =
-    req.body || {};
+  const newImages = contentImageUrls.map((url) => ({
+    url: url,
+    alt: "Image",
+  }));
+
   Object.assign(post, {
     title: title || post.title,
     content: content || post.content,
-    image: imageUrl,
+    image: imageUrl || post.image,
+    images: newImages,
     catagory: catagory || post.catagory,
     tags: tags
       ? Array.isArray(tags)
@@ -117,6 +161,7 @@ const updatePost = asyncHandler(async (req, res) => {
     contentTable: contentTable || post.contentTable,
     status: status || post.status,
   });
+
   await post.save();
 
   return res
@@ -127,6 +172,12 @@ const updatePost = asyncHandler(async (req, res) => {
 // Delete a post and associated comments/likes
 const deletePost = asyncHandler(async (req, res) => {
   const { id } = req.params;
+
+  // Validate ObjectId
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new NotFoundError("Invalid post ID");
+  }
+
   console.log("Attempting to delete post with ID:", id);
 
   const post = await Post.findById(id);
@@ -137,9 +188,16 @@ const deletePost = asyncHandler(async (req, res) => {
     new ForbiddenError("Unauthorized")
   );
 
+  // Delete main image from Cloudinary
   if (post.image) {
-    console.log("Deleting image from Cloudinary:", post.image);
+    console.log("Deleting main image from Cloudinary:", post.image);
     await deleteFileFromCloudinary(post.image);
+  }
+
+  // Delete all content images from Cloudinary
+  for (const image of post.images) {
+    console.log("Deleting content image from Cloudinary:", image.url);
+    await deleteFileFromCloudinary(image.url);
   }
 
   console.log("Deleting comments for post:", id);
@@ -158,7 +216,7 @@ const deletePost = asyncHandler(async (req, res) => {
 const getPosts = asyncHandler(async (req, res) => {
   const {
     page = 1,
-    limit = 10,
+    limit = 12,
     search,
     sort = "createdAt",
     order = "desc",
@@ -378,6 +436,7 @@ const getPosts = asyncHandler(async (req, res) => {
         title: 1,
         content: 1,
         image: 1,
+        images: 1,
         catagory: 1,
         tags: 1,
         contentTable: 1,
@@ -451,7 +510,7 @@ const getPosts = asyncHandler(async (req, res) => {
 
 // Pending posts
 const getPendingPosts = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, search } = req.query;
+  const { page = 1, limit = 12, search } = req.query;
   const userId = req.userId;
 
   const matchStage = {
@@ -649,6 +708,7 @@ const getPendingPosts = asyncHandler(async (req, res) => {
         title: 1,
         content: 1,
         image: 1,
+        images: 1,
         catagory: 1,
         tags: 1,
         contentTable: 1,
@@ -720,7 +780,7 @@ const getPendingPosts = asyncHandler(async (req, res) => {
 });
 
 const getSuspendedPosts = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, query } = req.query;
+  const { page = 1, limit = 12, query } = req.query;
   const userId = req.userId;
 
   const matchStage = {
@@ -793,6 +853,7 @@ const getSuspendedPosts = asyncHandler(async (req, res) => {
         title: 1,
         content: 1,
         excerpt: 1,
+        images: 1,
         author: { userName: 1, _id: 1 },
         createdAt: 1,
         commentCount: 1,
@@ -833,7 +894,7 @@ const getSuspendedPosts = asyncHandler(async (req, res) => {
 
 // Get user's own posts
 const getMyPosts = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, search } = req.query;
+  const { page = 1, limit = 12, search } = req.query;
   const userId = req.userId;
 
   const matchStage = {
@@ -1031,6 +1092,7 @@ const getMyPosts = asyncHandler(async (req, res) => {
         title: 1,
         content: 1,
         image: 1,
+        images: 1,
         catagory: 1,
         tags: 1,
         contentTable: 1,
@@ -1298,6 +1360,7 @@ const getPost = asyncHandler(async (req, res) => {
         title: 1,
         content: 1,
         image: 1,
+        images: 1,
         catagory: 1,
         tags: 1,
         contentTable: 1,
@@ -1355,6 +1418,7 @@ const getPost = asyncHandler(async (req, res) => {
 
 export {
   createPost,
+  deleteImage,
   deletePost,
   getMyPosts,
   getPendingPosts,
@@ -1362,4 +1426,5 @@ export {
   getPosts,
   getSuspendedPosts,
   updatePost,
+  uploadImage,
 };
