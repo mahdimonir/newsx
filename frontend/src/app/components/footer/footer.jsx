@@ -8,7 +8,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* About Section */}
           <div>
-            <h3 className="text-lg font-semibold text-primary mb-4">Newsx</h3>
+            <img src="/logo.svg" alt="Newsx Logo" className="h-8 w-auto mb-4" />
             <p className="text-sm text-gray-600 dark:text-gray-300">
               Newsx is your personal space to share stories, ideas, and
               experiences. Join our community to explore diverse posts and

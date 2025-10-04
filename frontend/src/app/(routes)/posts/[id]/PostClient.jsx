@@ -9,6 +9,8 @@ import {
 } from "@/app/configs/constants";
 import axiosInstance from "@/app/utils/axiosConfig";
 import { useAuth } from "@/context/AuthContext";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
   Ban,
   CheckCircle,
@@ -734,10 +736,126 @@ export default function PostClient({ id }) {
         {post.title}
       </h1>
       {/* 4th: Content */}
-      <div
-        className="prose dark:prose-invert text-gray-700 dark:text-gray-300 mb-6 max-w-none"
-        dangerouslySetInnerHTML={{ __html: post.content }}
-      />
+      <div className="prose dark:prose-invert text-gray-700 dark:text-gray-300 mb-6 max-w-none blog-content">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {post.content}
+        </ReactMarkdown>
+      </div>
+      
+      <style jsx global>{`
+        .blog-content {
+          font-family: 'Georgia', serif;
+          line-height: 1.8;
+          font-size: 1.1rem;
+        }
+        
+        .blog-content h1, .blog-content h2, .blog-content h3, .blog-content h4 {
+          font-weight: 700;
+          margin-top: 2rem;
+          margin-bottom: 1rem;
+          color: #333;
+        }
+        
+        .blog-content h1 {
+          font-size: 2rem;
+          border-bottom: 2px solid #f0f0f0;
+          padding-bottom: 0.5rem;
+        }
+        
+        .blog-content h2 {
+          font-size: 1.75rem;
+        }
+        
+        .blog-content h3 {
+          font-size: 1.5rem;
+        }
+        
+        .blog-content p {
+          margin-bottom: 1.5rem;
+        }
+        
+        .blog-content a {
+          color: #6d28d9;
+          text-decoration: none;
+          border-bottom: 1px solid #e5e7eb;
+          transition: border-color 0.2s;
+        }
+        
+        .blog-content a:hover {
+          border-color: #6d28d9;
+        }
+        
+        .blog-content blockquote {
+          border-left: 4px solid #6d28d9;
+          padding-left: 1rem;
+          font-style: italic;
+          margin: 1.5rem 0;
+          color: #4b5563;
+        }
+        
+        .blog-content ul, .blog-content ol {
+          padding-left: 1.5rem;
+          margin-bottom: 1.5rem;
+        }
+        
+        .blog-content li {
+          margin-bottom: 0.5rem;
+        }
+        
+        .blog-content img {
+          border-radius: 0.5rem;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          max-width: 100%;
+          height: auto;
+          margin: 1.5rem 0;
+        }
+        
+        .blog-content pre {
+          background-color: #f3f4f6;
+          padding: 1rem;
+          border-radius: 0.5rem;
+          overflow-x: auto;
+          margin: 1.5rem 0;
+        }
+        
+        .blog-content code {
+          background-color: #f3f4f6;
+          padding: 0.2rem 0.4rem;
+          border-radius: 0.25rem;
+          font-size: 0.875rem;
+        }
+        
+        /* Dark mode styles */
+        .dark .blog-content h1, .dark .blog-content h2, .dark .blog-content h3, .dark .blog-content h4 {
+          color: #e5e7eb;
+        }
+        
+        .dark .blog-content h1 {
+          border-bottom: 2px solid #374151;
+        }
+        
+        .dark .blog-content a {
+          color: #a78bfa;
+          border-bottom: 1px solid #4b5563;
+        }
+        
+        .dark .blog-content a:hover {
+          border-color: #a78bfa;
+        }
+        
+        .dark .blog-content blockquote {
+          border-left: 4px solid #a78bfa;
+          color: #9ca3af;
+        }
+        
+        .dark .blog-content pre {
+          background-color: #1f2937;
+        }
+        
+        .dark .blog-content code {
+          background-color: #1f2937;
+        }
+      `}</style>
       {/* 5th: Tags (Toggleable) */}
       <div className="mb-6">
         <button
