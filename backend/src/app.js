@@ -192,14 +192,23 @@ app.get("/", (req, res) => {
   res.send("Hello from Express server with mahdi!!");
 });
 
-// MongoDB connection
-mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(() => console.log("Connected to MongoDB"))
-  .catch((err) => console.error("MongoDB connection error:", err));
+// MongoDB connection - only connect if not already connected
+const connectDB = async () => {
+  try {
+    if (mongoose.connection.readyState === 0) {
+      await mongoose.connect(process.env.MONGO_URI, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+      });
+      console.log("Connected to MongoDB");
+    }
+  } catch (err) {
+    console.error("MongoDB connection error:", err);
+  }
+};
+
+// Connect to MongoDB
+connectDB();
 
 // Error handler
 app.use(errorHandler);
