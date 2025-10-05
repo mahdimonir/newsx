@@ -1,4 +1,5 @@
 // tailwind.config.js
+import "@tailwindcss/typography";
 import "tailwind-scrollbar";
 
 module.exports = {
@@ -82,5 +83,5 @@ module.exports = {
     "text-2xl",
     "text-3xl",
   ],
-  plugins: ["tailwind-scrollbar"],
+  plugins: ["tailwind-scrollbar", "@tailwindcss/typography"],
 };
