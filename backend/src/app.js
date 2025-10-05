@@ -29,7 +29,10 @@ const allowedOrigins = (process.env.CORS_ORIGIN || "")
   .filter(Boolean) || [
   "http://localhost:3000",
   "http://localhost:8000",
+  "https://newsx-orpin.vercel.app",
+  "https://newsx-server-delta.vercel.app",
   "https://blog-sphere-backend-ruby.vercel.app",
+  "https://blog-sphere-frontend.vercel.app",
 ];
 
 app.use(
@@ -68,7 +71,7 @@ const swaggerOptions = {
       {
         url:
           process.env.NODE_ENV === "production"
-            ? "https://blog-sphere-backend-ruby.vercel.app/api/v1"
+            ? "https://newsx-server-delta.vercel.app/api/v1"
             : "http://localhost:8000/api/v1",
       },
     ],
@@ -192,23 +195,52 @@ app.get("/", (req, res) => {
   res.send("Hello from Express server with mahdi!!");
 });
 
-// MongoDB connection - only connect if not already connected
+// MongoDB connection with serverless optimization
+let isConnected = false;
+
 const connectDB = async () => {
+  if (isConnected) {
+    return;
+  }
+
   try {
-    if (mongoose.connection.readyState === 0) {
-      await mongoose.connect(process.env.MONGO_URI, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-      });
-      console.log("Connected to MongoDB");
-    }
+    await mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000, // 5 seconds timeout
+      bufferCommands: false, // Disable mongoose buffering
+      bufferMaxEntries: 0, // Disable mongoose buffering
+    });
+
+    isConnected = true;
+    console.log("Connected to MongoDB");
+
+    // Handle connection events
+    mongoose.connection.on("disconnected", () => {
+      isConnected = false;
+      console.log("MongoDB disconnected");
+    });
+
+    mongoose.connection.on("error", (err) => {
+      isConnected = false;
+      console.error("MongoDB connection error:", err);
+    });
   } catch (err) {
     console.error("MongoDB connection error:", err);
+    isConnected = false;
   }
 };
 
 // Connect to MongoDB
 connectDB();
+
+// Middleware to ensure MongoDB connection
+app.use(async (req, res, next) => {
+  if (!isConnected) {
+    await connectDB();
+  }
+  next();
+});
 
 // Error handler
 app.use(errorHandler);
