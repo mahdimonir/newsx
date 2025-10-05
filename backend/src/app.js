@@ -1,7 +1,6 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
-import mongoose from "mongoose";
 import path from "path";
 import swaggerJsDoc from "swagger-jsdoc";
 import swaggerUi from "swagger-ui-express";
@@ -195,52 +194,8 @@ app.get("/", (req, res) => {
   res.send("Hello from Express server with mahdi!!");
 });
 
-// MongoDB connection with serverless optimization
-let isConnected = false;
-
-const connectDB = async () => {
-  if (isConnected) {
-    return;
-  }
-
-  try {
-    await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 5000, // 5 seconds timeout
-      bufferCommands: false, // Disable mongoose buffering
-      bufferMaxEntries: 0, // Disable mongoose buffering
-    });
-
-    isConnected = true;
-    console.log("Connected to MongoDB");
-
-    // Handle connection events
-    mongoose.connection.on("disconnected", () => {
-      isConnected = false;
-      console.log("MongoDB disconnected");
-    });
-
-    mongoose.connection.on("error", (err) => {
-      isConnected = false;
-      console.error("MongoDB connection error:", err);
-    });
-  } catch (err) {
-    console.error("MongoDB connection error:", err);
-    isConnected = false;
-  }
-};
-
-// Connect to MongoDB
-connectDB();
-
-// Middleware to ensure MongoDB connection
-app.use(async (req, res, next) => {
-  if (!isConnected) {
-    await connectDB();
-  }
-  next();
-});
+// MongoDB connection is handled in src/db/index.js
+// This keeps the app.js clean and focused on Express configuration
 
 // Error handler
 app.use(errorHandler);
